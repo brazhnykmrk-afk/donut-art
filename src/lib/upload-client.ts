@@ -23,11 +23,23 @@ export async function uploadImage(
     throw new Error(data?.error?.message ?? "Could not prepare the upload.");
   }
 
-  const { uploadUrl, key, publicUrl } = (await response.json()) as {
-    uploadUrl: string;
-    key: string;
-    publicUrl: string;
-  };
+  const upload = (await response.json()) as
+    | { driver: "blob" }
+    | { uploadUrl: string; key: string; publicUrl: string };
+
+  // Vercel Blob has its own client-upload protocol (token via
+  // /api/uploads/blob, then a direct upload to the blob store).
+  if ("driver" in upload) {
+    const { upload: blobUpload } = await import("@vercel/blob/client");
+    const blob = await blobUpload(`${kind}/${file.name}`, file, {
+      access: "public",
+      handleUploadUrl: "/api/uploads/blob",
+      contentType: file.type,
+    });
+    return { key: blob.url, publicUrl: blob.url };
+  }
+
+  const { uploadUrl, key, publicUrl } = upload;
 
   const put = await fetch(uploadUrl, {
     method: "PUT",

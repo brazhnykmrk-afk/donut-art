@@ -16,9 +16,13 @@ const hostname = storageHostname();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: hostname
-      ? [{ protocol: "https", hostname }]
-      : [{ protocol: "https", hostname: "**" }],
+    remotePatterns: [
+      // Vercel Blob public stores
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      ...(hostname
+        ? [{ protocol: "https", hostname }]
+        : [{ protocol: "https", hostname: "**" }]),
+    ],
   },
 };
 

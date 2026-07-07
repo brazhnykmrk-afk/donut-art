@@ -33,6 +33,12 @@ export async function createSignedUpload(params: {
   fileSize: number;
   kind: "artwork" | "avatar";
 }) {
+  // Vercel Blob uses its own client-upload protocol — the browser talks to
+  // /api/uploads/blob instead of PUTting to a signed URL.
+  if (storageDriver === "blob") {
+    return { driver: "blob" as const };
+  }
+
   const extension = ALLOWED_IMAGE_TYPES[params.fileType];
   const key = `${params.kind}/${params.userId}/${crypto.randomUUID()}.${extension}`;
 
@@ -63,6 +69,12 @@ export async function createSignedUpload(params: {
 /** Best-effort delete — a leaked orphan object must never fail a user action. */
 export async function deleteStoredObject(key: string): Promise<void> {
   try {
+    // Vercel Blob keys are absolute URLs.
+    if (key.startsWith("https://")) {
+      const { del } = await import("@vercel/blob");
+      await del(key);
+      return;
+    }
     if (storageDriver === "local") {
       await fs.unlink(path.join(LOCAL_UPLOADS_DIR, key));
       return;

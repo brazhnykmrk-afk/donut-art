@@ -13,15 +13,18 @@ export const storageConfig = {
 /**
  * Which storage driver to use:
  *   "local" — files on this computer, in public/uploads (development)
+ *   "blob"  — Vercel Blob (production on Vercel)
  *   "r2"    — Cloudflare R2 / any S3-compatible bucket (production)
  * Set STORAGE_DRIVER explicitly, or it defaults to "r2" when R2 is configured.
  */
-export const storageDriver: "r2" | "local" =
+export const storageDriver: "r2" | "local" | "blob" =
   process.env.STORAGE_DRIVER === "local"
     ? "local"
-    : process.env.STORAGE_DRIVER === "r2" || process.env.R2_ACCOUNT_ID
-      ? "r2"
-      : "local";
+    : process.env.STORAGE_DRIVER === "blob"
+      ? "blob"
+      : process.env.STORAGE_DRIVER === "r2" || process.env.R2_ACCOUNT_ID
+        ? "r2"
+        : "local";
 
 let client: S3Client | null = null;
 
@@ -41,6 +44,10 @@ export function getStorageClient(): S3Client {
 
 /** Public URL for a stored object key. */
 export function publicImageUrl(key: string): string {
+  // Vercel Blob keys are already absolute URLs.
+  if (key.startsWith("https://")) {
+    return key;
+  }
   if (storageDriver === "local") {
     // Served straight from public/uploads by Next.js.
     return `/uploads/${key}`;
